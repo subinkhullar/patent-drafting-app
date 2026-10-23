@@ -63,8 +63,7 @@
 ## 🛠️ Quick Deployment to GitHub Pages
 
 1.	Fork or Clone this repository:
-codeBash
-git clone https://github.com/<your-username>/<your-repository-name>.git
+- **codeBash:** git clone https://github.com/<your-username>/<your-repository-name>.git
 
 2.	In your repository on GitHub:
 -	**Navigate to Settings > Pages.**
@@ -73,8 +72,7 @@ git clone https://github.com/<your-username>/<your-repository-name>.git
 -	**Click Save.**
 
 3.	Your drafting tool will be live in seconds at:
-codeText
-https://<your-username>.github.io/<your-repository-name>/
+- **codeText:** https://<your-username>.github.io/<your-repository-name>/
 
 ---
 
