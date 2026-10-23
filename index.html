@@ -1,0 +1,2023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Patent Drafting App by Subin Khullar</title>
+  
+  <!-- Explicit PWA Manifest & Meta Tags -->
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#0f4c81" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PatentDraft" />
+
+  <!-- jsPDF for Multi-Page Drawing PDF Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #0f4c81;
+      --primary-dark: #092c4c;
+      --accent: #d97706;
+      --danger: #b91c1c;
+      --success: #15803d;
+      --bg: #cbd5e1;
+      --card-bg: #ffffff;
+      --text: #1f2937;
+      --border: #94a3b8;
+      --ribbon-bg: #f8fafc;
+      --sidebar-width: 290px;
+      --highlight-color: #fef08a;
+      --page-h: 11in;
+      --page-w: 8.5in;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+    header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+    }
+    .title-bar {
+      padding: 6px 16px;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .ribbon-tabs {
+      display: flex;
+      background: #f1f5f9;
+      border-bottom: 1px solid var(--border);
+      padding: 0 10px;
+    }
+    .tab-btn {
+      padding: 8px 18px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: #64748b;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s ease-in-out;
+    }
+    .tab-btn:hover { color: var(--primary); }
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom: 2px solid var(--primary);
+      background: #ffffff;
+      font-weight: 600;
+    }
+    .ribbon-toolbar {
+      padding: 6px 16px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: var(--ribbon-bg);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .btn {
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      background: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .btn:hover { background: #f1f5f9; }
+    .btn-primary { background: var(--primary); color: white; border-color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-toggle-active { background: #fef9c3; border-color: #ca8a04; color: #854d0e; font-weight: 600; }
+    .btn-danger { color: var(--danger); border-color: #fecaca; }
+    .btn-danger:hover { background: #fee2e2; }
+
+    .workspace { display: flex; flex: 1; overflow: hidden; }
+
+    /* Left Sidebar */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--card-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar-header {
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      background: #f8fafc;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .element-list { flex: 1; overflow-y: auto; padding: 8px; }
+    .element-item {
+      font-size: 12px;
+      padding: 6px 10px;
+      margin-bottom: 4px;
+      border: 1px solid #f1f5f9;
+      border-radius: 4px;
+      background: #fbfcfd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .badge-numeral {
+      background: #e2e8f0;
+      color: #0f172a;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    /* Views Container */
+    .view-container { flex: 1; display: flex; overflow: hidden; position: relative; }
+    .tab-view { display: none; flex: 1; height: 100%; overflow-y: auto; padding: 20px; }
+    .tab-view.active { display: flex; }
+
+    /* Multi-Page Specification Editor with Overflow Protection */
+    .pages-scroll-container {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      padding-bottom: 80px;
+    }
+    .document-page-wrapper {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .page-action-divider {
+      margin: 10px 0;
+      display: flex;
+      gap: 8px;
+      opacity: 0.85;
+      transition: opacity 0.2s;
+    }
+    .page-action-divider:hover { opacity: 1; }
+
+    .document-page {
+      width: var(--page-w);
+      height: var(--page-h);
+      background: white;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+      padding: 1in;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-sizing: border-box;
+      position: relative;
+      overflow: hidden;
+    }
+    .document-page.overflowing {
+      border: 2px dashed var(--danger);
+      box-shadow: 0 0 12px rgba(185, 28, 28, 0.4);
+    }
+    .overflow-warning-bar {
+      display: none;
+      position: absolute;
+      bottom: 42px;
+      left: 1in;
+      right: 1in;
+      background: #fee2e2;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 5;
+    }
+    .document-page.overflowing .overflow-warning-bar {
+      display: flex;
+    }
+
+    .page-body-content {
+      flex: 1;
+      overflow: hidden;
+    }
+    .spec-section { margin-bottom: 20px; }
+    .spec-header-editable {
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 13px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 3px;
+      letter-spacing: 0.5px;
+      color: #334155;
+      outline: none;
+    }
+    .spec-header-editable:focus { border-bottom: 2px solid var(--primary); background: #f8fafc; }
+    .editable {
+      outline: none;
+      line-height: 1.8;
+      font-size: 14px;
+      font-family: 'Times New Roman', Times, serif;
+      min-height: 40px;
+    }
+    .editable p { margin-bottom: 12px; text-indent: 2em; text-align: justify; }
+
+    .page-footer {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 6px;
+      font-size: 11px;
+      color: #94a3b8;
+      display: flex;
+      justify-content: space-between;
+      user-select: none;
+    }
+
+    .claim-term-highlight {
+      background-color: var(--highlight-color);
+      border-radius: 2px;
+      padding: 1px 3px;
+      font-weight: 500;
+      color: #000;
+    }
+
+    /* Claims Drafting View */
+    .claims-builder {
+      max-width: 960px;
+      margin: 0 auto;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding-bottom: 40px;
+    }
+    .claim-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .claim-meta {
+      display: flex;
+      gap: 10px;
+      font-size: 12px;
+      align-items: center;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .claim-editor {
+      width: 100%;
+      min-height: 85px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px;
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 14px;
+      line-height: 1.6;
+      outline: none;
+      background: white;
+      white-space: pre-wrap;
+    }
+
+    /* Multi-Figure Drawing Studio */
+    .ppt-view { flex-direction: column; height: 100%; width: 100%; padding: 0; }
+    .fig-tabs-bar {
+      display: flex;
+      background: #e2e8f0;
+      border-bottom: 1px solid var(--border);
+      padding: 6px 12px 0 12px;
+      gap: 4px;
+      align-items: center;
+      overflow-x: auto;
+    }
+    .fig-tab {
+      padding: 6px 12px;
+      background: #cbd5e1;
+      border: 1px solid #94a3b8;
+      border-bottom: none;
+      border-radius: 4px 4px 0 0;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+    }
+    .fig-tab.active { background: white; border-color: var(--border); font-weight: 700; color: var(--primary); }
+    .drawing-ribbon {
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 6px 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .canvas-viewport {
+      flex: 1;
+      background: #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+      padding: 24px;
+      position: relative;
+    }
+    .sheet-wrapper {
+      position: relative;
+      background: white;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+    #patentCanvas { display: block; background: #ffffff; cursor: default; }
+
+    /* Checks View */
+    .checks-view { max-width: 960px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 20px; }
+    .checks-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .check-category-card { background: white; border: 1px solid var(--border); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; }
+    .audit-feed { background: white; border: 1px solid var(--border); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+    .audit-card { padding: 8px 12px; border-radius: 4px; font-size: 13px; line-height: 1.4; }
+    .audit-card.error { background: #fee2e2; border-left: 4px solid var(--danger); color: #991b1b; }
+    .audit-card.warning { background: #fef3c7; border-left: 4px solid var(--accent); color: #92400e; }
+    .audit-card.info { background: #ecfdf5; border-left: 4px solid var(--success); color: #065f46; }
+
+    @media print {
+      header, .sidebar, .drawing-ribbon, .fig-tabs-bar, .checks-grid, .btn, .page-action-divider, .overflow-warning-bar { display: none !important; }
+      body, .workspace, .view-container, .tab-view, .pages-scroll-container { height: auto !important; overflow: visible !important; display: block !important; background: white !important; }
+      .document-page-wrapper { margin: 0 0 20px 0 !important; }
+      .document-page { box-shadow: none !important; width: 100% !important; padding: 0.5in !important; page-break-after: always; height: auto !important; min-height: 10in; }
+      .claim-term-highlight { background-color: transparent !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Ribbon Header -->
+  <header>
+    <div class="title-bar">
+      <span>Patent Drafting App by Subin Khullar</span>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn" id="installPwaBtn" style="display: none; background: #fbbf24; border-color: #d97706; font-weight: bold;" onclick="triggerPwaInstall()">📲 Install App</button>
+        <button class="btn" onclick="saveProject()">💾 Save Draft</button>
+        <button class="btn" onclick="document.getElementById('fileInput').click()">📂 Open Draft</button>
+        <button class="btn" onclick="exportDocxWithClaims()">📥 Export Spec+Claims (.docx)</button>
+        <button class="btn btn-primary" onclick="window.print()">🖨️ Print Spec (PDF)</button>
+      </div>
+    </div>
+    
+    <!-- Workspace Tabs -->
+    <div class="ribbon-tabs">
+      <button class="tab-btn active" id="tab-spec-btn" onclick="switchTab('spec')">📄 Specification Drafting</button>
+      <button class="tab-btn" id="tab-claims-btn" onclick="switchTab('claims')">⚖️ Claims Drafting (Apparatus / Method / Chemistry / CPP)</button>
+      <button class="tab-btn" id="tab-drawings-btn" onclick="switchTab('drawings')">📐 Figures & Drawing Studio (PPT)</button>
+      <button class="tab-btn" id="tab-checks-btn" onclick="switchTab('checks')">🔍 Consistency Checks</button>
+    </div>
+
+    <!-- Contextual Toolbar -->
+    <div class="ribbon-toolbar" id="toolbar">
+      <!-- Spec Toolbar -->
+      <div id="specToolbarItems" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+        <select class="btn" id="fontFamilySelector" onchange="changeDocFont(this.value)">
+          <option value="'Times New Roman', Times, serif">Times New Roman</option>
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="'Courier New', Courier, monospace">Courier New</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="Calibri, sans-serif">Calibri</option>
+        </select>
+        <select class="btn" id="fontSizeSelector" onchange="changeDocFontSize(this.value)">
+          <option value="12pt">12 pt</option>
+          <option value="11pt">11 pt</option>
+          <option value="14pt">14 pt</option>
+          <option value="10pt">10 pt</option>
+        </select>
+        <button class="btn" onclick="execCmd('bold')"><b>B</b></button>
+        <button class="btn" onclick="execCmd('italic')"><i>I</i></button>
+        <button class="btn" onclick="execCmd('underline')"><u>U</u></button>
+        <span style="border-left: 1px solid var(--border); height: 16px;"></span>
+        <button class="btn btn-primary" onclick="insertPageAtEnd()">📄 + Insert Page at End</button>
+        <button class="btn" onclick="autoBalanceAllPages()">⚖️ Auto-Balance Overflowing Pages</button>
+        <button class="btn" onclick="insertReferenceNumeralPrompt()">+ Insert Numeral</button>
+        <button class="btn" id="highlightToggleBtn" onclick="toggleClaimTermHighlighting()">🟡 Toggle Term Highlighting</button>
+      </div>
+
+      <!-- Drawings Global Action Button -->
+      <div id="drawingsToolbarItems" style="display: none; gap: 8px; align-items: center; margin-left: auto;">
+        <button class="btn btn-primary" onclick="exportAllFiguresPDF()">📑 Export All Figures as PDF (MPEP Compliant)</button>
+      </div>
+
+      <button class="btn btn-primary" style="margin-left: auto;" onclick="runComprehensiveAudit()">⚡ Run All Checks</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <!-- Left Parts Ledger -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span>Part & Numeral Ledger</span>
+        <button class="btn" style="padding: 2px 6px;" onclick="addLedgerElement()">+ Add</button>
+      </div>
+      <div class="element-list" id="ledgerList"></div>
+    </aside>
+
+    <!-- Main Views Container -->
+    <main class="view-container">
+      
+      <!-- TAB 1: SPECIFICATION DRAFTING -->
+      <section id="view-spec" class="tab-view active">
+        <div class="pages-scroll-container" id="pagesContainer">
+          
+          <div class="document-page-wrapper">
+            <div class="document-page" id="page-1">
+              <div class="page-body-content" oninput="checkPageOverflow(this)">
+                <div class="spec-section">
+                  <div class="spec-header-editable" contenteditable="true">Title of the Invention</div>
+                  <div class="editable spec-edit-block" id="spec-title" contenteditable="true">
+                    SYSTEM, METHOD, AND COMPUTER PROGRAM PRODUCT FOR REAL-TIME PATENT SPECIFICATION MANAGEMENT
+                  </div>
+                </div>
+
+                <div class="spec-section">
+                  <div class="spec-header-editable" contenteditable="true">Technical Field</div>
+                  <div class="editable spec-edit-block" id="spec-field" contenteditable="true">
+                    <p>Embodiments of the present disclosure relate generally to computer-assisted legal documentation systems, and more particularly to interactive patent specification drafting, dynamic page overflow balancing, chemistry compositions, and computer program product (CPP) verification.</p>
+                  </div>
+                </div>
+
+                <div class="spec-section">
+                  <div class="spec-header-editable" contenteditable="true">Summary of the Invention</div>
+                  <div class="editable spec-edit-block" id="spec-summary" contenteditable="true">
+                    <p>In accordance with an embodiment, a patent drafting apparatus includes a processing unit communicatively coupled to a display terminal and a memory storage. The processing unit executes instructions to monitor author inputs across claims and multi-page specifications, synchronize part reference numerals, and validate antecedent basis introduction in real time.</p>
+                    <p>In another aspect, drawing figures with formal USPTO margins are cross-checked against a live part ledger to prevent 35 U.S.C. § 112 defects prior to filing.</p>
+                  </div>
+                </div>
+
+                <div class="spec-section">
+                  <div class="spec-header-editable" contenteditable="true">Abstract of the Disclosure</div>
+                  <div class="editable spec-edit-block" id="spec-abstract" contenteditable="true">
+                    <p>A patent drafting apparatus and consistency validation system are disclosed. The system includes an interactive user interface configured to track claim dependencies, trace antecedent basis introduction across independent and dependent claims, and verify part numerals against graphical drawing figures across multi-page specifications.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="overflow-warning-bar">
+                <span>⚠️ Text exceeds printable page limit!</span>
+                <button class="btn btn-danger" style="padding:2px 6px;" onclick="splitOverflowingPage(this)">Split to Next Page</button>
+              </div>
+              
+              <div class="page-footer">
+                <span>Patent Drafting App by Subin Khullar</span>
+                <span class="page-num-indicator">Page 1</span>
+              </div>
+            </div>
+
+            <div class="page-action-divider">
+              <button class="btn" onclick="insertPageAfter(this)">📄 Insert Page Below</button>
+            </div>
+          </div>
+
+          <div class="document-page-wrapper">
+            <div class="document-page" id="page-2">
+              <div class="page-body-content" oninput="checkPageOverflow(this)">
+                <div class="spec-section">
+                  <div class="spec-header-editable" contenteditable="true">Brief Description of the Drawings</div>
+                  <div class="editable spec-edit-block" id="spec-drawings-desc" contenteditable="true">
+                    <p>FIG. 1 illustrates a block diagram of an exemplary patent drafting system 100 having a processing unit 102 and display terminal 104 in accordance with one embodiment.</p>
+                    <p>FIG. 2 illustrates a flowchart diagram of an antecedent basis validation routine executed in accordance with one embodiment.</p>
+                  </div>
+                </div>
+
+                <div class="spec-section">
+                  <div class="spec-header-editable" contenteditable="true">Detailed Description of Preferred Embodiments</div>
+                  <div class="editable spec-edit-block" id="spec-body" contenteditable="true" oninput="syncNumeralsFromText()">
+                    <p>Referring now to FIG. 1, an exemplary embodiment of the patent drafting system 100 is illustrated. The system includes a processing unit 102 communicatively coupled to a display terminal 104 and a memory storage 106. The processing unit 102 executes instructions configured to audit patent claims and maintain part consistency.</p>
+                    <p>The display terminal 104 renders graphical drafting tools and receives inputs from an author. The memory storage 106 stores element definitions, claim trees, and term ledgers.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="overflow-warning-bar">
+                <span>⚠️ Text exceeds printable page limit!</span>
+                <button class="btn btn-danger" style="padding:2px 6px;" onclick="splitOverflowingPage(this)">Split to Next Page</button>
+              </div>
+
+              <div class="page-footer">
+                <span>Patent Drafting App by Subin Khullar</span>
+                <span class="page-num-indicator">Page 2</span>
+              </div>
+            </div>
+
+            <div class="page-action-divider">
+              <button class="btn" onclick="insertPageAfter(this)">📄 Insert Page Below</button>
+              <button class="btn btn-danger" onclick="removeSpecificPage(this)">🗑️ Remove Page</button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 2: CLAIMS DRAFTING -->
+      <section id="view-claims" class="tab-view">
+        <div class="claims-builder">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+              <h3 style="font-size:16px;">Claims Drafting & Hierarchy Manager</h3>
+              <p style="font-size:12px; color:#64748b;">Specialized statutory support for Apparatus, Method, Computer Program Product (CPP), and Chemistry claims.</p>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="addClaim('apparatus')">+ Apparatus Claim</button>
+              <button class="btn" onclick="addClaim('method')">+ Method Claim</button>
+              <button class="btn" style="background:#0284c7; color:white;" onclick="addClaim('cpp')">+ CPP / CRM Claim</button>
+              <button class="btn" style="background:#059669; color:white;" onclick="addClaim('chemistry')">+ Chemical Claim</button>
+              <button class="btn" onclick="addDependentClaim()">+ Dependent Claim</button>
+            </div>
+          </div>
+          <div id="claims-container"></div>
+        </div>
+      </section>
+
+      <!-- TAB 3: DRAWINGS STUDIO -->
+      <section id="view-drawings" class="tab-view ppt-view">
+        <div class="fig-tabs-bar" id="figTabsBar">
+          <button class="btn" style="padding: 2px 8px; margin-bottom: 2px;" onclick="addNewFigureTab()">+ New Fig Tab</button>
+        </div>
+
+        <div class="drawing-ribbon">
+          <label style="font-size:11px; font-weight:700;">TOOL:</label>
+          <select id="drawTool" class="btn" onchange="onToolChange()">
+            <option value="select">✋ Select / Move / Resize</option>
+            <option value="rect">Rectangle (Component block)</option>
+            <option value="roundrect">Rounded Box</option>
+            <option value="circle">Circle / Terminal</option>
+            <option value="diamond">Diamond (Decision / Flowchart)</option>
+            <option value="cylinder">Cylinder (Database / Storage)</option>
+            <option value="line">Straight Connector Line</option>
+            <option value="arrow">Arrow Line (Signal / Direction)</option>
+            <option value="dotted">Dotted Electrical Line</option>
+            <option value="freedraw">✏️ Freehand Sketch</option>
+            <option value="textbox">🔤 Text Box / Part Label</option>
+          </select>
+
+          <span style="border-left: 1px solid var(--border); height: 16px;"></span>
+
+          <label style="font-size:11px; font-weight:700;">PATENT ICONS:</label>
+          <select id="iconGallery" class="btn" onchange="insertPatentIcon(this.value); this.value='';">
+            <option value="">Insert Standard Icon...</option>
+            <option value="ground">Electrical Ground</option>
+            <option value="antenna">RF Antenna</option>
+            <option value="resistor">Resistor Element</option>
+            <option value="switch">Contact Switch</option>
+            <option value="cpu">Microprocessor / CPU</option>
+            <option value="cloud">Cloud / Network</option>
+            <option value="sensor">Sensor Block</option>
+          </select>
+
+          <span style="border-left: 1px solid var(--border); height: 16px;"></span>
+
+          <label style="font-size:11px; font-weight:700;">FONT:</label>
+          <select id="canvasFont" class="btn" onchange="updateSelectedTextFont(this.value)">
+            <option value="Arial">Arial</option>
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Courier New">Courier</option>
+          </select>
+
+          <span style="border-left: 1px solid var(--border); height: 16px;"></span>
+
+          <button class="btn" onclick="deleteSelectedShape()">🗑️ Delete Shape</button>
+          <button class="btn btn-danger" onclick="clearCurrentCanvas()">Clear Sheet</button>
+          <button class="btn" onclick="exportCurrentFigurePNG()">Export PNG</button>
+          <button class="btn btn-primary" onclick="exportAllFiguresPDF()">📑 Export All as PDF</button>
+        </div>
+
+        <div class="canvas-viewport">
+          <div class="sheet-wrapper" id="sheetWrapper">
+            <canvas id="patentCanvas" width="816" height="1056"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: CONSISTENCY CHECKS DASHBOARD -->
+      <section id="view-checks" class="tab-view">
+        <div class="checks-view">
+          <div>
+            <h3 style="font-size: 16px;">Patent Application Consistency & Quality Suite</h3>
+            <p style="font-size: 12px; color: #64748b;">Automated validation for 35 U.S.C. § 112, antecedent basis, claim classes (including CPP and Chemistry), and page overflows.</p>
+          </div>
+
+          <div class="checks-grid">
+            <div class="check-category-card">
+              <div>
+                <h4>1. Antecedent Basis Audit</h4>
+                <p>Scans claims for terms preceded by "the" or "said" without preceding indefinite introduction ("a" or "an"), with smart exceptions for IUPAC chemistry and CPP terminology.</p>
+              </div>
+              <button class="btn" onclick="runCheck('antecedent')">Run Antecedent Check</button>
+            </div>
+
+            <div class="check-category-card">
+              <div>
+                <h4>2. Claim Type & Dependency Audit</h4>
+                <p>Verifies claim tree logic across Apparatus, Method, CPP, and Chemical Compositions to prevent improper cross-category dependencies.</p>
+              </div>
+              <button class="btn" onclick="runCheck('hierarchy')">Run Hierarchy Check</button>
+            </div>
+
+            <div class="check-category-card">
+              <div>
+                <h4>3. Specification Numeral & Overflow Audit</h4>
+                <p>Cross-references part numbers in the Specification against all Drawing Sheets and Ledger, and flags text overflows.</p>
+              </div>
+              <button class="btn" onclick="runCheck('numerals')">Run Part & Overflow Check</button>
+            </div>
+          </div>
+
+          <div class="audit-feed">
+            <h4 style="font-size:14px; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">Validation Results Feed</h4>
+            <div id="auditList">
+              <div class="audit-card info">Ready. Click any check above or "Run All Checks" to analyze your draft.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <input type="file" id="fileInput" style="display:none;" onchange="loadProjectFile(event)" />
+
+  <script>
+    /* =========================================================================
+       1. GLOBAL STATE & CONFIG
+       ========================================================================= */
+    const MARGINS = { top: 96, left: 96, right: 60, bottom: 36 };
+    const CANVAS_WIDTH = 816;
+    const CANVAS_HEIGHT = 1056;
+
+    let deferredPrompt = null;
+
+    const state = {
+      highlightActive: false,
+      activeFigureIndex: 0,
+      selectedShapeIndex: -1,
+      isDragging: false,
+      isResizing: false,
+      resizeHandle: null,
+      dragOffsetX: 0,
+      dragOffsetY: 0,
+      currentFreePoints: [],
+      
+      elementsLedger: [
+        { id: 1, name: "patent drafting system", numeral: "100" },
+        { id: 2, name: "processing unit", numeral: "102" },
+        { id: 3, name: "display terminal", numeral: "104" },
+        { id: 4, name: "memory storage", numeral: "106" }
+      ],
+      claims: [
+        {
+          id: 1,
+          type: "apparatus",
+          isDependent: false,
+          dependsOn: null,
+          text: "1. A patent drafting apparatus, comprising:\n  a processing unit 102; and\n  a memory storage 106 coupled to the processing unit, the memory storage storing instructions to check claim antecedent basis."
+        },
+        {
+          id: 2,
+          type: "cpp",
+          isDependent: false,
+          dependsOn: null,
+          text: "2. A non-transitory computer-readable storage medium comprising instructions that, when executed by a processor 102, cause the processor to perform operations comprising:\n  parsing a plurality of patent claims;\n  identifying an element preceded by a definite article; and\n  determining whether antecedent basis for the element is present."
+        },
+        {
+          id: 3,
+          type: "chemistry",
+          isDependent: false,
+          dependsOn: null,
+          text: "3. A pharmaceutical composition comprising:\n  an active pharmaceutical ingredient in an amount of 10 wt% to 40 wt%;\n  a polymer carrier selected from the group consisting of polyethylene glycol, polyvinylpyrrolidone, and hydroxypropyl methylcellulose; and\n  a pharmaceutically acceptable excipient."
+        },
+        {
+          id: 4,
+          type: "chemistry",
+          isDependent: true,
+          dependsOn: 3,
+          text: "4. The pharmaceutical composition of claim 3, wherein the active pharmaceutical ingredient is present in an amount of 25 wt%."
+        }
+      ],
+      figures: [
+        {
+          id: 'fig-1',
+          name: 'FIG. 1',
+          shapes: [
+            { type: 'rect', x: 260, y: 150, w: 280, h: 120, font: 'Arial' },
+            { type: 'textbox', x: 340, y: 215, text: 'System 100', font: 'Arial', size: 16 },
+            { type: 'arrow', x1: 400, y1: 270, x2: 400, y2: 380 },
+            { type: 'roundrect', x: 280, y: 380, w: 240, h: 90, font: 'Arial' },
+            { type: 'textbox', x: 330, y: 430, text: 'Processor 102', font: 'Arial', size: 16 }
+          ]
+        }
+      ]
+    };
+
+    /* =========================================================================
+       2. TAB NAVIGATION & DOCUMENT FORMATTING
+       ========================================================================= */
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+
+      const activeBtn = document.getElementById(`tab-${tabId}-btn`);
+      const activeView = document.getElementById(`view-${tabId}`);
+      if (activeBtn) activeBtn.classList.add('active');
+      if (activeView) activeView.classList.add('active');
+
+      document.getElementById('specToolbarItems').style.display = (tabId === 'spec') ? 'flex' : 'none';
+      document.getElementById('drawingsToolbarItems').style.display = (tabId === 'drawings') ? 'flex' : 'none';
+
+      if (tabId === 'spec') checkAllPagesForOverflow();
+      if (tabId === 'claims') renderClaims();
+      if (tabId === 'drawings') {
+        renderFigureTabs();
+        redrawCanvas();
+      }
+    }
+
+    function execCmd(cmd, value = null) {
+      document.execCommand(cmd, false, value);
+    }
+
+    function changeDocFont(fontFamily) {
+      document.querySelectorAll('.document-page .editable').forEach(el => {
+        el.style.fontFamily = fontFamily;
+      });
+    }
+
+    function changeDocFontSize(fontSize) {
+      document.querySelectorAll('.document-page .editable').forEach(el => {
+        el.style.fontSize = fontSize;
+      });
+    }
+
+    /* =========================================================================
+       3. PAGE INSERTION & OVERFLOW ENGINE
+       ========================================================================= */
+    function updatePageNumbers() {
+      const wrappers = document.querySelectorAll('.document-page-wrapper');
+      wrappers.forEach((wrapper, index) => {
+        const page = wrapper.querySelector('.document-page');
+        page.id = `page-${index + 1}`;
+        const indicator = page.querySelector('.page-num-indicator');
+        if (indicator) indicator.textContent = `Page ${index + 1} of ${wrappers.length}`;
+      });
+    }
+
+    function checkPageOverflow(contentEl) {
+      const page = contentEl.closest('.document-page');
+      if (!page) return;
+      const isOver = contentEl.scrollHeight > contentEl.clientHeight + 5;
+      if (isOver) {
+        page.classList.add('overflowing');
+      } else {
+        page.classList.remove('overflowing');
+      }
+    }
+
+    function checkAllPagesForOverflow() {
+      document.querySelectorAll('.page-body-content').forEach(el => checkPageOverflow(el));
+    }
+
+    function createPageElement() {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'document-page-wrapper';
+      wrapper.innerHTML = `
+        <div class="document-page">
+          <div class="page-body-content" oninput="checkPageOverflow(this)">
+            <div class="spec-section">
+              <div class="spec-header-editable" contenteditable="true">Detailed Description (Continued)</div>
+              <div class="editable spec-edit-block" contenteditable="true" oninput="syncNumeralsFromText()">
+                <p>Enter additional description, chemical synthesis steps, or algorithmic operations here...</p>
+              </div>
+            </div>
+          </div>
+          <div class="overflow-warning-bar">
+            <span>⚠️ Text exceeds printable page limit!</span>
+            <button class="btn btn-danger" style="padding:2px 6px;" onclick="splitOverflowingPage(this)">Split to Next Page</button>
+          </div>
+          <div class="page-footer">
+            <span>Patent Drafting App by Subin Khullar</span>
+            <span class="page-num-indicator"></span>
+          </div>
+        </div>
+        <div class="page-action-divider">
+          <button class="btn" onclick="insertPageAfter(this)">📄 Insert Page Below</button>
+          <button class="btn btn-danger" onclick="removeSpecificPage(this)">🗑️ Remove Page</button>
+        </div>
+      `;
+      return wrapper;
+    }
+
+    function insertPageAtEnd() {
+      const container = document.getElementById('pagesContainer');
+      const newPage = createPageElement();
+      container.appendChild(newPage);
+      updatePageNumbers();
+      checkAllPagesForOverflow();
+      if (state.highlightActive) applyClaimTermHighlights();
+    }
+
+    function insertPageAfter(btn) {
+      const currentWrapper = btn.closest('.document-page-wrapper');
+      const newPage = createPageElement();
+      currentWrapper.parentNode.insertBefore(newPage, currentWrapper.nextSibling);
+      updatePageNumbers();
+      checkAllPagesForOverflow();
+      if (state.highlightActive) applyClaimTermHighlights();
+    }
+
+    function removeSpecificPage(btn) {
+      const wrappers = document.querySelectorAll('.document-page-wrapper');
+      if (wrappers.length <= 1) {
+        alert("At least one page is required.");
+        return;
+      }
+      if (confirm("Are you sure you want to delete this page? Any text on this page will be removed.")) {
+        const wrapper = btn.closest('.document-page-wrapper');
+        wrapper.remove();
+        updatePageNumbers();
+        checkAllPagesForOverflow();
+      }
+    }
+
+    function splitOverflowingPage(btn) {
+      const page = btn.closest('.document-page');
+      const contentEl = page.querySelector('.page-body-content');
+      const wrapper = page.closest('.document-page-wrapper');
+
+      let nextWrapper = wrapper.nextElementSibling;
+      if (!nextWrapper) {
+        nextWrapper = createPageElement();
+        wrapper.parentNode.appendChild(nextWrapper);
+      }
+
+      const nextContentEl = nextWrapper.querySelector('.page-body-content');
+      const editableBlocks = contentEl.querySelectorAll('.spec-edit-block');
+      const lastBlock = editableBlocks[editableBlocks.length - 1];
+
+      if (lastBlock && lastBlock.children.length > 1) {
+        const paragraphs = Array.from(lastBlock.querySelectorAll('p'));
+        const toMove = paragraphs.slice(Math.max(1, Math.floor(paragraphs.length / 2)));
+        
+        let targetBlock = nextContentEl.querySelector('.spec-edit-block');
+        if (!targetBlock) {
+          const sec = document.createElement('div');
+          sec.className = 'spec-section';
+          sec.innerHTML = `<div class="spec-header-editable" contenteditable="true">Detailed Description (Continued)</div><div class="editable spec-edit-block" contenteditable="true"></div>`;
+          nextContentEl.appendChild(sec);
+          targetBlock = sec.querySelector('.spec-edit-block');
+        }
+
+        toMove.forEach(p => targetBlock.insertBefore(p, targetBlock.firstChild));
+      }
+
+      updatePageNumbers();
+      checkAllPagesForOverflow();
+    }
+
+    function autoBalanceAllPages() {
+      let loops = 0;
+      let hasOverflow = true;
+      while (hasOverflow && loops < 8) {
+        hasOverflow = false;
+        const pages = document.querySelectorAll('.document-page');
+        for (const p of pages) {
+          const c = p.querySelector('.page-body-content');
+          if (c.scrollHeight > c.clientHeight + 5) {
+            hasOverflow = true;
+            const splitBtn = p.querySelector('.overflow-warning-bar button');
+            if (splitBtn) splitOverflowingPage(splitBtn);
+          }
+        }
+        loops++;
+      }
+      alert("Auto-balance complete. Pages have been reorganized to prevent text overflows.");
+    }
+
+    /* =========================================================================
+       4. CROSS-DOCUMENT CLAIM TERM HIGHLIGHTING
+       ========================================================================= */
+    function getClaimTermsToHighlight() {
+      const terms = new Set();
+      state.elementsLedger.forEach(item => {
+        if (item.name && item.name.length > 2) terms.add(item.name.toLowerCase());
+      });
+
+      const introRegex = /\b(?:a|an)\s+([a-zA-Z\-]+(?:\s+[a-zA-Z\-]+)?)/gi;
+      state.claims.forEach(c => {
+        let match;
+        while ((match = introRegex.exec(c.text)) !== null) {
+          const phrase = match[1].toLowerCase().trim();
+          if (!["apparatus", "method", "system", "claim", "plurality", "portion", "set", "composition", "medium"].includes(phrase)) {
+            terms.add(phrase);
+          }
+        }
+      });
+      return Array.from(terms).sort((a, b) => b.length - a.length);
+    }
+
+    function toggleClaimTermHighlighting() {
+      state.highlightActive = !state.highlightActive;
+      const toggleBtn = document.getElementById('highlightToggleBtn');
+      if (state.highlightActive) {
+        toggleBtn.classList.add('btn-toggle-active');
+        applyClaimTermHighlights();
+      } else {
+        toggleBtn.classList.remove('btn-toggle-active');
+        clearClaimTermHighlights();
+      }
+    }
+
+    function clearHighlightsInElement(el) {
+      const marks = el.querySelectorAll('.claim-term-highlight');
+      marks.forEach(mark => {
+        const textNode = document.createTextNode(mark.textContent);
+        mark.parentNode.replaceChild(textNode, mark);
+      });
+      el.normalize();
+    }
+
+    function highlightTermsInNode(node, termsRegex) {
+      if (node.nodeType === 3) {
+        const val = node.nodeValue;
+        if (termsRegex.test(val)) {
+          const frag = document.createDocumentFragment();
+          let lastIdx = 0;
+          termsRegex.lastIndex = 0;
+          let m;
+          while ((m = termsRegex.exec(val)) !== null) {
+            frag.appendChild(document.createTextNode(val.substring(lastIdx, m.index)));
+            const mark = document.createElement('span');
+            mark.className = 'claim-term-highlight';
+            mark.textContent = m[0];
+            frag.appendChild(mark);
+            lastIdx = termsRegex.lastIndex;
+          }
+          frag.appendChild(document.createTextNode(val.substring(lastIdx)));
+          node.parentNode.replaceChild(frag, node);
+        }
+      } else if (node.nodeType === 1 && !['SCRIPT', 'STYLE'].includes(node.nodeName) && !node.classList.contains('claim-term-highlight')) {
+        Array.from(node.childNodes).forEach(child => highlightTermsInNode(child, termsRegex));
+      }
+    }
+
+    function applyClaimTermHighlights() {
+      clearClaimTermHighlights();
+      const terms = getClaimTermsToHighlight();
+      if (terms.length === 0) return;
+
+      const escapedTerms = terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      const termsRegex = new RegExp(`\\b(${escapedTerms.join('|')})\\b`, 'gi');
+
+      document.querySelectorAll('.spec-edit-block').forEach(b => highlightTermsInNode(b, termsRegex));
+      document.querySelectorAll('.claim-editor').forEach(e => highlightTermsInNode(e, termsRegex));
+    }
+
+    function clearClaimTermHighlights() {
+      document.querySelectorAll('.spec-edit-block').forEach(clearHighlightsInElement);
+      document.querySelectorAll('.claim-editor').forEach(clearHighlightsInElement);
+    }
+
+    /* =========================================================================
+       5. CLAIMS MANAGER (APPARATUS, METHOD, CPP, & CHEMISTRY)
+       ========================================================================= */
+    function renderClaims() {
+      const container = document.getElementById('claims-container');
+      container.innerHTML = '';
+
+      state.claims.forEach((claim, idx) => {
+        const claimNum = idx + 1;
+        const card = document.createElement('div');
+        card.className = 'claim-card';
+        card.innerHTML = `
+          <div class="claim-meta">
+            <strong>Claim ${claimNum}</strong>
+            <label>Type: 
+              <select onchange="setClaimType(${idx}, this.value)">
+                <option value="apparatus" ${claim.type === 'apparatus' ? 'selected' : ''}>Apparatus / System</option>
+                <option value="method" ${claim.type === 'method' ? 'selected' : ''}>Method / Process</option>
+                <option value="cpp" ${claim.type === 'cpp' ? 'selected' : ''}>Computer Program Product (CPP / CRM)</option>
+                <option value="chemistry" ${claim.type === 'chemistry' ? 'selected' : ''}>Chemical Composition / Markush</option>
+              </select>
+            </label>
+            ${claim.isDependent ? `
+              <label>Depends on:
+                <select onchange="setClaimDependency(${idx}, this.value)">
+                  ${state.claims.slice(0, idx).map((_, i) => `
+                    <option value="${i+1}" ${claim.dependsOn == (i+1) ? 'selected' : ''}>Claim ${i+1}</option>
+                  `).join('')}
+                </select>
+              </label>
+            ` : '<span style="color:var(--success); font-weight:600;">[Independent Claim]</span>'}
+            <button class="btn btn-danger" style="margin-left:auto;" onclick="deleteClaim(${idx})">Delete</button>
+          </div>
+          <div class="claim-editor" contenteditable="true" oninput="onClaimInput(${idx}, this)">${escapeHtml(claim.text)}</div>
+        `;
+        container.appendChild(card);
+      });
+
+      if (state.highlightActive) applyClaimTermHighlights();
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function onClaimInput(idx, element) {
+      state.claims[idx].text = element.innerText;
+    }
+
+    function addClaim(type) {
+      const nextNum = state.claims.length + 1;
+      let template = '';
+
+      if (type === 'apparatus') {
+        template = `${nextNum}. An apparatus, comprising:\n  a first component; and\n  a second component coupled to the first component.`;
+      } else if (type === 'method') {
+        template = `${nextNum}. A method, comprising:\n  obtaining, by a processing unit, input data;\n  processing the input data according to an algorithm; and\n  generating an output based on the processing.`;
+      } else if (type === 'cpp') {
+        template = `${nextNum}. A non-transitory computer-readable storage medium comprising instructions which, when executed by a processor, cause the processor to perform operations comprising:\n  receiving data from an input terminal;\n  processing the data; and\n  transmitting an alert upon detecting an error.`;
+      } else if (type === 'chemistry') {
+        template = `${nextNum}. A composition comprising:\n  a primary compound in an amount of 10 wt% to 50 wt%;\n  a solvent selected from the group consisting of water, ethanol, and acetone; and\n  an adjuvant in an amount of 0.5 wt% to 5 wt%.`;
+      }
+
+      state.claims.push({
+        id: Date.now(),
+        type: type,
+        isDependent: false,
+        dependsOn: null,
+        text: template
+      });
+      renderClaims();
+    }
+
+    function addDependentClaim() {
+      if (state.claims.length === 0) {
+        alert("Please create an independent claim first.");
+        return;
+      }
+      const nextNum = state.claims.length + 1;
+      const parentNum = state.claims.length;
+      const parentClaim = state.claims[parentNum - 1];
+
+      let depLead = "The apparatus";
+      if (parentClaim.type === 'method') depLead = "The method";
+      if (parentClaim.type === 'cpp') depLead = "The non-transitory computer-readable storage medium";
+      if (parentClaim.type === 'chemistry') depLead = "The composition";
+
+      state.claims.push({
+        id: Date.now(),
+        type: parentClaim.type,
+        isDependent: true,
+        dependsOn: parentNum,
+        text: `${nextNum}. ${depLead} of claim ${parentNum}, further comprising...`
+      });
+      renderClaims();
+    }
+
+    function setClaimType(idx, type) { state.claims[idx].type = type; }
+    function setClaimDependency(idx, val) { state.claims[idx].dependsOn = parseInt(val, 10); }
+    function deleteClaim(idx) {
+      state.claims.splice(idx, 1);
+      renderClaims();
+    }
+
+    /* =========================================================================
+       6. ELEMENT & NUMERAL LEDGER
+       ========================================================================= */
+    function renderLedger() {
+      const list = document.getElementById('ledgerList');
+      list.innerHTML = '';
+      state.elementsLedger.forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'element-item';
+        row.innerHTML = `
+          <span>${item.name}</span>
+          <span class="badge-numeral">${item.numeral}</span>
+        `;
+        list.appendChild(row);
+      });
+      if (state.highlightActive) applyClaimTermHighlights();
+    }
+
+    function addLedgerElement() {
+      const name = prompt("Enter Element/Part Name (e.g., optical sensor):");
+      if (!name) return;
+      const numeral = prompt("Enter Reference Numeral (e.g., 108):");
+      if (!numeral) return;
+
+      state.elementsLedger.push({ id: Date.now(), name: name.trim().toLowerCase(), numeral: numeral.trim() });
+      renderLedger();
+    }
+
+    function insertReferenceNumeralPrompt() {
+      if (state.elementsLedger.length === 0) {
+        alert("The Ledger is empty. Add elements first.");
+        return;
+      }
+      const promptText = state.elementsLedger.map((el, i) => `${i + 1}. ${el.name} ${el.numeral}`).join('\n');
+      const pick = prompt(`Select element number to insert:\n${promptText}`);
+      const idx = parseInt(pick, 10) - 1;
+      if (state.elementsLedger[idx]) {
+        const item = state.elementsLedger[idx];
+        execCmd('insertText', ` ${item.name} ${item.numeral} `);
+      }
+    }
+
+    function syncNumeralsFromText() {
+      const allText = Array.from(document.querySelectorAll('.spec-edit-block')).map(el => el.innerText).join(' ');
+      const regex = /\b([a-zA-Z]+(?:\s+[a-zA-Z]+)?)\s+(\d{2,4})\b/g;
+      let match;
+      while ((match = regex.exec(allText)) !== null) {
+        const name = match[1].toLowerCase();
+        const numeral = match[2];
+        const exists = state.elementsLedger.some(e => e.numeral === numeral);
+        if (!exists && !["fig", "figure", "claims", "claim", "embodiment", "page", "wt"].includes(name)) {
+          state.elementsLedger.push({ id: Date.now(), name, numeral });
+          renderLedger();
+        }
+      }
+    }
+
+    /* =========================================================================
+       7. MULTI-FIGURE DRAWING STUDIO (PPT-LIKE)
+       ========================================================================= */
+    const canvas = document.getElementById('patentCanvas');
+    const ctx = canvas.getContext('2d');
+    let drawStartX = 0, drawStartY = 0;
+    let isDrawingShape = false;
+
+    function getCurrentFigure() {
+      return state.figures[state.activeFigureIndex] || state.figures[0];
+    }
+
+    function renderFigureTabs() {
+      const bar = document.getElementById('figTabsBar');
+      bar.querySelectorAll('.fig-tab').forEach(t => t.remove());
+
+      state.figures.forEach((fig, index) => {
+        const tab = document.createElement('div');
+        tab.className = `fig-tab ${index === state.activeFigureIndex ? 'active' : ''}`;
+        tab.innerHTML = `
+          <span>${fig.name}</span>
+          <span style="font-size:11px; opacity:0.6; cursor:pointer;" onclick="deleteFigureTab(event, ${index})">✕</span>
+        `;
+        tab.addEventListener('click', () => switchFigureTab(index));
+        bar.insertBefore(tab, bar.lastElementChild);
+      });
+    }
+
+    function switchFigureTab(index) {
+      state.activeFigureIndex = index;
+      state.selectedShapeIndex = -1;
+      renderFigureTabs();
+      redrawCanvas();
+    }
+
+    function addNewFigureTab() {
+      const nextNum = state.figures.length + 1;
+      state.figures.push({
+        id: `fig-${Date.now()}`,
+        name: `FIG. ${nextNum}`,
+        shapes: []
+      });
+      switchFigureTab(state.figures.length - 1);
+    }
+
+    function deleteFigureTab(e, index) {
+      e.stopPropagation();
+      if (state.figures.length <= 1) {
+        alert("At least one drawing sheet is required.");
+        return;
+      }
+      if (confirm(`Delete ${state.figures[index].name}?`)) {
+        state.figures.splice(index, 1);
+        if (state.activeFigureIndex >= state.figures.length) {
+          state.activeFigureIndex = state.figures.length - 1;
+        }
+        renderFigureTabs();
+        redrawCanvas();
+      }
+    }
+
+    function onToolChange() {
+      state.selectedShapeIndex = -1;
+      redrawCanvas();
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const tool = document.getElementById('drawTool').value;
+      const currentFig = getCurrentFigure();
+
+      if (tool === 'select') {
+        if (state.selectedShapeIndex >= 0) {
+          const s = currentFig.shapes[state.selectedShapeIndex];
+          const handle = getResizeHandleUnderPoint(s, x, y);
+          if (handle) {
+            state.isResizing = true;
+            state.resizeHandle = handle;
+            return;
+          }
+        }
+        const clickedIndex = getShapeAtPoint(currentFig.shapes, x, y);
+        state.selectedShapeIndex = clickedIndex;
+        if (clickedIndex >= 0) {
+          state.isDragging = true;
+          const s = currentFig.shapes[clickedIndex];
+          state.dragOffsetX = x - (s.x || s.x1 || 0);
+          state.dragOffsetY = y - (s.y || s.y1 || 0);
+        }
+        redrawCanvas();
+        return;
+      }
+
+      if (tool === 'textbox') {
+        const text = prompt("Enter text or reference numeral (e.g., 102):", "102");
+        if (text) {
+          currentFig.shapes.push({
+            type: 'textbox',
+            x: x,
+            y: y,
+            text: text,
+            font: document.getElementById('canvasFont').value,
+            size: 14
+          });
+          redrawCanvas();
+        }
+        return;
+      }
+
+      if (tool === 'freedraw') {
+        state.currentFreePoints = [{ x, y }];
+        isDrawingShape = true;
+        return;
+      }
+
+      drawStartX = x;
+      drawStartY = y;
+      isDrawingShape = true;
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const currentFig = getCurrentFigure();
+      const tool = document.getElementById('drawTool').value;
+
+      if (tool === 'select') {
+        if (state.isResizing && state.selectedShapeIndex >= 0) {
+          resizeShape(currentFig.shapes[state.selectedShapeIndex], state.resizeHandle, x, y);
+          redrawCanvas();
+          return;
+        }
+        if (state.isDragging && state.selectedShapeIndex >= 0) {
+          const s = currentFig.shapes[state.selectedShapeIndex];
+          if (s.x !== undefined) {
+            s.x = x - state.dragOffsetX;
+            s.y = y - state.dragOffsetY;
+          } else if (s.x1 !== undefined) {
+            const dx = x - (s.x1 + state.dragOffsetX);
+            const dy = y - (s.y1 + state.dragOffsetY);
+            s.x1 += dx; s.y1 += dy;
+            s.x2 += dx; s.y2 += dy;
+          }
+          redrawCanvas();
+          return;
+        }
+      }
+
+      if (isDrawingShape && tool === 'freedraw') {
+        state.currentFreePoints.push({ x, y });
+        redrawCanvas();
+        ctx.beginPath();
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.moveTo(state.currentFreePoints[0].x, state.currentFreePoints[0].y);
+        for (let i = 1; i < state.currentFreePoints.length; i++) {
+          ctx.lineTo(state.currentFreePoints[i].x, state.currentFreePoints[i].y);
+        }
+        ctx.stroke();
+      }
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const tool = document.getElementById('drawTool').value;
+      const currentFig = getCurrentFigure();
+
+      if (state.isDragging || state.isResizing) {
+        state.isDragging = false;
+        state.isResizing = false;
+        state.resizeHandle = null;
+        redrawCanvas();
+        return;
+      }
+
+      if (!isDrawingShape) return;
+      isDrawingShape = false;
+
+      if (tool === 'freedraw' && state.currentFreePoints.length > 1) {
+        currentFig.shapes.push({
+          type: 'freedraw',
+          points: [...state.currentFreePoints]
+        });
+        state.currentFreePoints = [];
+        redrawCanvas();
+        return;
+      }
+
+      const font = document.getElementById('canvasFont').value;
+      const w = Math.abs(x - drawStartX);
+      const h = Math.abs(y - drawStartY);
+      const left = Math.min(drawStartX, x);
+      const top = Math.min(drawStartY, y);
+
+      if (w > 5 || h > 5) {
+        if (tool === 'rect') currentFig.shapes.push({ type: 'rect', x: left, y: top, w, h, font });
+        if (tool === 'roundrect') currentFig.shapes.push({ type: 'roundrect', x: left, y: top, w, h, font });
+        if (tool === 'circle') currentFig.shapes.push({ type: 'circle', x: left + w/2, y: top + h/2, r: Math.max(w, h)/2, font });
+        if (tool === 'diamond') currentFig.shapes.push({ type: 'diamond', x: left, y: top, w, h, font });
+        if (tool === 'cylinder') currentFig.shapes.push({ type: 'cylinder', x: left, y: top, w, h, font });
+        if (tool === 'line') currentFig.shapes.push({ type: 'line', x1: drawStartX, y1: drawStartY, x2: x, y2: y });
+        if (tool === 'arrow') currentFig.shapes.push({ type: 'arrow', x1: drawStartX, y1: drawStartY, x2: x, y2: y });
+        if (tool === 'dotted') currentFig.shapes.push({ type: 'dotted', x1: drawStartX, y1: drawStartY, x2: x, y2: y });
+      }
+      redrawCanvas();
+    });
+
+    function getShapeAtPoint(shapes, x, y) {
+      for (let i = shapes.length - 1; i >= 0; i--) {
+        const s = shapes[i];
+        if (s.type === 'rect' || s.type === 'roundrect' || s.type === 'diamond' || s.type === 'cylinder') {
+          if (x >= s.x && x <= s.x + s.w && y >= s.y && y <= s.y + s.h) return i;
+        } else if (s.type === 'circle') {
+          if (Math.hypot(x - s.x, y - s.y) <= s.r) return i;
+        } else if (s.type === 'textbox') {
+          if (x >= s.x && x <= s.x + 80 && y >= s.y - 18 && y <= s.y + 6) return i;
+        } else if (s.type === 'line' || s.type === 'arrow' || s.type === 'dotted') {
+          const dist = pointToLineDist(x, y, s.x1, s.y1, s.x2, s.y2);
+          if (dist < 8) return i;
+        }
+      }
+      return -1;
+    }
+
+    function pointToLineDist(px, py, x1, y1, x2, y2) {
+      const L2 = (x2 - x1)**2 + (y2 - y1)**2;
+      if (L2 === 0) return Math.hypot(px - x1, py - y1);
+      let t = ((px - x1)*(x2 - x1) + (py - y1)*(y2 - y1)) / L2;
+      t = Math.max(0, Math.min(1, t));
+      return Math.hypot(px - (x1 + t*(x2 - x1)), py - (y1 + t*(y2 - y1)));
+    }
+
+    function getResizeHandleUnderPoint(s, x, y) {
+      if (!s.w || !s.h) return null;
+      const handles = [
+        { name: 'br', x: s.x + s.w, y: s.y + s.h },
+        { name: 'tr', x: s.x + s.w, y: s.y },
+        { name: 'bl', x: s.x, y: s.y + s.h }
+      ];
+      for (const h of handles) {
+        if (Math.hypot(x - h.x, y - h.y) < 8) return h.name;
+      }
+      return null;
+    }
+
+    function resizeShape(s, handle, x, y) {
+      if (handle === 'br') {
+        s.w = Math.max(20, x - s.x);
+        s.h = Math.max(20, y - s.y);
+      } else if (handle === 'tr') {
+        s.w = Math.max(20, x - s.x);
+        const newY = Math.min(y, s.y + s.h - 20);
+        s.h = s.y + s.h - newY;
+        s.y = newY;
+      } else if (handle === 'bl') {
+        const newX = Math.min(x, s.x + s.w - 20);
+        s.w = s.x + s.w - newX;
+        s.x = newX;
+        s.h = Math.max(20, y - s.y);
+      }
+    }
+
+    function deleteSelectedShape() {
+      const fig = getCurrentFigure();
+      if (state.selectedShapeIndex >= 0) {
+        fig.shapes.splice(state.selectedShapeIndex, 1);
+        state.selectedShapeIndex = -1;
+        redrawCanvas();
+      } else {
+        alert("Select a shape first to delete.");
+      }
+    }
+
+    function updateSelectedTextFont(font) {
+      const fig = getCurrentFigure();
+      if (state.selectedShapeIndex >= 0) {
+        fig.shapes[state.selectedShapeIndex].font = font;
+        redrawCanvas();
+      }
+    }
+
+    function insertPatentIcon(icon) {
+      if (!icon) return;
+      const fig = getCurrentFigure();
+      const cx = 350, cy = 300;
+      if (icon === 'ground') {
+        fig.shapes.push({ type: 'line', x1: cx, y1: cy, x2: cx, y2: cy + 30 });
+        fig.shapes.push({ type: 'line', x1: cx - 20, y1: cy + 30, x2: cx + 20, y2: cy + 30 });
+        fig.shapes.push({ type: 'line', x1: cx - 12, y1: cy + 36, x2: cx + 12, y2: cy + 36 });
+        fig.shapes.push({ type: 'line', x1: cx - 5, y1: cy + 42, x2: cx + 5, y2: cy + 42 });
+      } else if (icon === 'antenna') {
+        fig.shapes.push({ type: 'line', x1: cx, y1: cy, x2: cx, y2: cy + 50 });
+        fig.shapes.push({ type: 'line', x1: cx - 18, y1: cy - 25, x2: cx, y2: cy });
+        fig.shapes.push({ type: 'line', x1: cx + 18, y1: cy - 25, x2: cx, y2: cy });
+      } else if (icon === 'resistor') {
+        fig.shapes.push({ type: 'rect', x: cx - 35, y: cy - 12, w: 70, h: 24 });
+        fig.shapes.push({ type: 'line', x1: cx - 60, y1: cy, x2: cx - 35, y2: cy });
+        fig.shapes.push({ type: 'line', x1: cx + 35, y1: cy, x2: cx + 60, y2: cy });
+      } else if (icon === 'switch') {
+        fig.shapes.push({ type: 'circle', x: cx - 30, y: cy, r: 4 });
+        fig.shapes.push({ type: 'circle', x: cx + 30, y: cy, r: 4 });
+        fig.shapes.push({ type: 'line', x1: cx - 30, y1: cy, x2: cx + 20, y2: cy - 20 });
+      } else if (icon === 'cpu') {
+        fig.shapes.push({ type: 'rect', x: cx - 40, y: cy - 40, w: 80, h: 80 });
+        fig.shapes.push({ type: 'textbox', x: cx - 16, y: cy + 5, text: 'CPU', size: 14 });
+      } else if (icon === 'cloud') {
+        fig.shapes.push({ type: 'roundrect', x: cx - 50, y: cy - 25, w: 100, h: 50 });
+        fig.shapes.push({ type: 'textbox', x: cx - 22, y: cy + 5, text: 'Cloud', size: 12 });
+      } else if (icon === 'sensor') {
+        fig.shapes.push({ type: 'diamond', x: cx - 35, y: cy - 35, w: 70, h: 70 });
+        fig.shapes.push({ type: 'textbox', x: cx - 20, y: cy + 4, text: 'Sensor', size: 11 });
+      }
+      redrawCanvas();
+    }
+
+    function redrawCanvas() {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+      const currentFig = getCurrentFigure();
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${currentFig.name}`, CANVAS_WIDTH / 2, MARGINS.top + 20);
+      ctx.font = '11px Arial';
+      ctx.fillText(`Sheet ${state.activeFigureIndex + 1} of ${state.figures.length}`, CANVAS_WIDTH / 2, MARGINS.top + 36);
+      ctx.textAlign = 'left';
+
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#000000';
+      ctx.fillStyle = '#000000';
+
+      currentFig.shapes.forEach((s, idx) => {
+        ctx.beginPath();
+        if (s.type === 'rect') {
+          ctx.strokeRect(s.x, s.y, s.w, s.h);
+        } else if (s.type === 'roundrect') {
+          drawRoundRect(ctx, s.x, s.y, s.w, s.h, 12);
+        } else if (s.type === 'circle') {
+          ctx.arc(s.x, s.y, s.r, 0, 2 * Math.PI);
+          ctx.stroke();
+        } else if (s.type === 'diamond') {
+          ctx.moveTo(s.x + s.w/2, s.y);
+          ctx.lineTo(s.x + s.w, s.y + s.h/2);
+          ctx.lineTo(s.x + s.w/2, s.y + s.h);
+          ctx.lineTo(s.x, s.y + s.h/2);
+          ctx.closePath();
+          ctx.stroke();
+        } else if (s.type === 'cylinder') {
+          drawCylinder(ctx, s.x, s.y, s.w, s.h);
+        } else if (s.type === 'line') {
+          ctx.moveTo(s.x1, s.y1);
+          ctx.lineTo(s.x2, s.y2);
+          ctx.stroke();
+        } else if (s.type === 'arrow') {
+          drawArrow(ctx, s.x1, s.y1, s.x2, s.y2);
+        } else if (s.type === 'dotted') {
+          ctx.setLineDash([4, 4]);
+          ctx.moveTo(s.x1, s.y1);
+          ctx.lineTo(s.x2, s.y2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        } else if (s.type === 'freedraw' && s.points) {
+          ctx.moveTo(s.points[0].x, s.points[0].y);
+          for (let p = 1; p < s.points.length; p++) ctx.lineTo(s.points[p].x, s.points[p].y);
+          ctx.stroke();
+        } else if (s.type === 'textbox') {
+          ctx.font = `${s.size || 14}px ${s.font || 'Arial'}`;
+          ctx.fillText(s.text, s.x, s.y);
+        }
+
+        if (idx === state.selectedShapeIndex) {
+          drawSelectionHandles(s);
+        }
+      });
+
+      drawMarginGuides();
+    }
+
+    function drawMarginGuides() {
+      ctx.save();
+      ctx.setLineDash([5, 5]);
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 1;
+
+      const sightX = MARGINS.left;
+      const sightY = MARGINS.top;
+      const sightW = CANVAS_WIDTH - MARGINS.left - MARGINS.right;
+      const sightH = CANVAS_HEIGHT - MARGINS.top - MARGINS.bottom;
+
+      ctx.strokeRect(sightX, sightY, sightW, sightH);
+      ctx.font = '10px Arial';
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillText(`37 CFR 1.84 Sight Margin Guide (Top 1.0", Left 1.0", Right 5/8", Bottom 3/8")`, sightX + 4, sightY - 6);
+      ctx.restore();
+    }
+
+    function drawSelectionHandles(s) {
+      ctx.save();
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+
+      if (s.w && s.h) {
+        ctx.strokeRect(s.x - 2, s.y - 2, s.w + 4, s.h + 4);
+        ctx.fillStyle = '#2563eb';
+        ctx.fillRect(s.x + s.w - 4, s.y + s.h - 4, 8, 8);
+        ctx.fillRect(s.x + s.w - 4, s.y - 4, 8, 8);
+        ctx.fillRect(s.x - 4, s.y + s.h - 4, 8, 8);
+      } else if (s.x1 !== undefined) {
+        ctx.strokeRect(Math.min(s.x1, s.x2) - 4, Math.min(s.y1, s.y2) - 4, Math.abs(s.x2 - s.x1) + 8, Math.abs(s.y2 - s.y1) + 8);
+      }
+      ctx.restore();
+    }
+
+    function drawRoundRect(c, x, y, w, h, r) {
+      c.beginPath();
+      c.moveTo(x + r, y);
+      c.lineTo(x + w - r, y);
+      c.quadraticCurveTo(x + w, y, x + w, y + r);
+      c.lineTo(x + w, y + h - r);
+      c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      c.lineTo(x + r, y + h);
+      c.quadraticCurveTo(x, y + h, x, y + h - r);
+      c.lineTo(x, y + r);
+      c.quadraticCurveTo(x, y, x + r, y);
+      c.closePath();
+      c.stroke();
+    }
+
+    function drawCylinder(c, x, y, w, h) {
+      const rx = w / 2;
+      const ry = 12;
+      c.beginPath();
+      c.ellipse(x + rx, y + ry, rx, ry, 0, 0, 2 * Math.PI);
+      c.stroke();
+      c.beginPath();
+      c.moveTo(x, y + ry);
+      c.lineTo(x, y + h - ry);
+      c.ellipse(x + rx, y + h - ry, rx, ry, 0, 0, Math.PI);
+      c.lineTo(x + w, y + ry);
+      c.stroke();
+    }
+
+    function drawArrow(c, fromx, fromy, tox, toy) {
+      const headlen = 12;
+      const angle = Math.atan2(toy - fromy, tox - fromx);
+      c.moveTo(fromx, fromy);
+      c.lineTo(tox, toy);
+      c.stroke();
+      c.beginPath();
+      c.moveTo(tox, toy);
+      c.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+      c.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+      c.closePath();
+      c.fill();
+    }
+
+    function clearCurrentCanvas() {
+      if (confirm(`Clear all shapes on ${getCurrentFigure().name}?`)) {
+        getCurrentFigure().shapes = [];
+        redrawCanvas();
+      }
+    }
+
+    function exportCurrentFigurePNG() {
+      redrawCanvasWithoutGuides();
+      const a = document.createElement('a');
+      a.download = `${getCurrentFigure().name.replace(/\s+/g, '_')}.png`;
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+      redrawCanvas();
+    }
+
+    function redrawCanvasWithoutGuides() {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      const currentFig = getCurrentFigure();
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${currentFig.name}`, CANVAS_WIDTH / 2, MARGINS.top + 20);
+      ctx.font = '11px Arial';
+      ctx.fillText(`Sheet ${state.activeFigureIndex + 1} of ${state.figures.length}`, CANVAS_WIDTH / 2, MARGINS.top + 36);
+      ctx.textAlign = 'left';
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#000000';
+      ctx.fillStyle = '#000000';
+
+      currentFig.shapes.forEach(s => {
+        ctx.beginPath();
+        if (s.type === 'rect') ctx.strokeRect(s.x, s.y, s.w, s.h);
+        else if (s.type === 'roundrect') drawRoundRect(ctx, s.x, s.y, s.w, s.h, 12);
+        else if (s.type === 'circle') { ctx.arc(s.x, s.y, s.r, 0, 2 * Math.PI); ctx.stroke(); }
+        else if (s.type === 'diamond') {
+          ctx.moveTo(s.x + s.w/2, s.y); ctx.lineTo(s.x + s.w, s.y + s.h/2);
+          ctx.lineTo(s.x + s.w/2, s.y + s.h); ctx.lineTo(s.x, s.y + s.h/2);
+          ctx.closePath(); ctx.stroke();
+        }
+        else if (s.type === 'cylinder') drawCylinder(ctx, s.x, s.y, s.w, s.h);
+        else if (s.type === 'line') { ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2); ctx.stroke(); }
+        else if (s.type === 'arrow') drawArrow(ctx, s.x1, s.y1, s.x2, s.y2);
+        else if (s.type === 'dotted') { ctx.setLineDash([4, 4]); ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2); ctx.stroke(); ctx.setLineDash([]); }
+        else if (s.type === 'freedraw' && s.points) {
+          ctx.moveTo(s.points[0].x, s.points[0].y);
+          for (let p = 1; p < s.points.length; p++) ctx.lineTo(s.points[p].x, s.points[p].y);
+          ctx.stroke();
+        }
+        else if (s.type === 'textbox') { ctx.font = `${s.size || 14}px ${s.font || 'Arial'}`; ctx.fillText(s.text, s.x, s.y); }
+      });
+    }
+
+    async function exportAllFiguresPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'in', format: 'letter' });
+      const origActive = state.activeFigureIndex;
+
+      for (let i = 0; i < state.figures.length; i++) {
+        state.activeFigureIndex = i;
+        redrawCanvasWithoutGuides();
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        if (i > 0) doc.addPage('letter', 'portrait');
+        doc.addImage(imgData, 'JPEG', 0, 0, 8.5, 11);
+      }
+
+      state.activeFigureIndex = origActive;
+      redrawCanvas();
+      doc.save(`Patent_Drawings_Complete_Set_${Date.now()}.pdf`);
+    }
+
+    /* =========================================================================
+       8. NATIVE .DOCX SPECIFICATION + CLAIMS EXPORT
+       ========================================================================= */
+    function exportDocxWithClaims() {
+      let docContent = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset="utf-8">
+          <title>Patent Specification</title>
+          <style>
+            body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 2.0; margin: 1in; }
+            h2 { text-transform: uppercase; font-size: 13pt; text-align: center; margin-top: 24pt; margin-bottom: 12pt; font-weight: bold; }
+            h1 { text-transform: uppercase; font-size: 14pt; text-align: center; margin-bottom: 24pt; font-weight: bold; }
+            p { text-indent: 0.5in; margin-bottom: 12pt; text-align: justify; }
+            .claim-p { text-indent: -0.5in; margin-left: 0.5in; margin-bottom: 14pt; }
+          </style>
+        </head>
+        <body>
+      `;
+
+      const pages = document.querySelectorAll('.document-page');
+      pages.forEach(p => {
+        const sections = p.querySelectorAll('.spec-section');
+        sections.forEach(sec => {
+          const headerEl = sec.querySelector('.spec-header-editable');
+          const bodyEl = sec.querySelector('.editable');
+          if (headerEl && bodyEl) {
+            const hText = headerEl.innerText.trim();
+            if (hText.toLowerCase().includes('title')) {
+              docContent += `<h1>${bodyEl.innerText.trim()}</h1>`;
+            } else {
+              docContent += `<h2>${hText}</h2>`;
+              docContent += `<div>${bodyEl.innerHTML}</div>`;
+            }
+          }
+        });
+      });
+
+      docContent += `<br clear="all" style="page-break-before:always" />`;
+      docContent += `<h2>WHAT IS CLAIMED IS:</h2>`;
+      state.claims.forEach(c => {
+        const formattedClaim = c.text.replace(/\n/g, '<br/>&nbsp;&nbsp;&nbsp;&nbsp;');
+        docContent += `<p class="claim-p">${formattedClaim}</p>`;
+      });
+
+      docContent += `</body></html>`;
+
+      const blob = new Blob(['\ufeff', docContent], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Patent_Specification_and_Claims_${Date.now()}.doc`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    /* =========================================================================
+       9. ADVANCED PATENT AUDIT ENGINE (ANTECEDENT, HIERARCHY, CPP & CHEMISTRY)
+       ========================================================================= */
+    function runCheck(category) {
+      switchTab('checks');
+      const auditList = document.getElementById('auditList');
+      auditList.innerHTML = '';
+      const issues = [];
+
+      if (category === 'antecedent' || category === 'all') checkAntecedents(issues);
+      if (category === 'hierarchy' || category === 'all') checkClaimHierarchy(issues);
+      if (category === 'numerals' || category === 'all') checkNumeralsAndSpec(issues);
+
+      if (issues.length === 0) {
+        auditList.innerHTML = `<div class="audit-card info"><b>Verification Passed:</b> No defects detected in ${category.toUpperCase()} checks.</div>`;
+      } else {
+        issues.forEach(i => {
+          const div = document.createElement('div');
+          div.className = `audit-card ${i.type}`;
+          div.innerHTML = i.msg;
+          auditList.appendChild(div);
+        });
+      }
+    }
+
+    function runComprehensiveAudit() { runCheck('all'); }
+
+    function checkAntecedents(issues) {
+      const standardExceptions = [
+        "apparatus", "method", "system", "claim", "claims", "step", "disclosure", "invention", 
+        "operations", "instructions", "group", "wt%", "ph", "room", "temperature",
+        "ratio", "presence", "amount", "mixture", "solution"
+      ];
+
+      state.claims.forEach((claim, idx) => {
+        const claimNum = idx + 1;
+        const text = claim.text;
+        const definiteRegex = /\b(the|said)\s+([a-zA-Z0-9\-]+(?:\s+[a-zA-Z0-9\-]+)?)/gi;
+        let match;
+
+        while ((match = definiteRegex.exec(text)) !== null) {
+          const matchedPhrase = match[0];
+          const element = match[2].toLowerCase().trim();
+
+          if (standardExceptions.includes(element)) continue;
+          if (claim.type === 'cpp' && ["processor", "instructions", "operations", "memory", "storage"].includes(element)) {
+            if (/storage medium|processor/i.test(text.substring(0, match.index))) continue;
+          }
+
+          const indefiniteRegex = new RegExp(`\\b(a|an)\\s+${escapeRegex(element)}\\b`, 'i');
+          const hasLocalIntro = indefiniteRegex.test(text.substring(0, match.index));
+
+          let hasParentIntro = false;
+          if (claim.isDependent && claim.dependsOn) {
+            const parent = state.claims[claim.dependsOn - 1];
+            if (parent && indefiniteRegex.test(parent.text)) hasParentIntro = true;
+          }
+
+          if (!hasLocalIntro && !hasParentIntro) {
+            issues.push({
+              type: 'error',
+              msg: `<b>Antecedent Basis Issue (Claim ${claimNum}):</b> Missing basis for "<b>${matchedPhrase}</b>". Introduce it with "a" or "an" first.`
+            });
+          }
+        }
+      });
+    }
+
+    function escapeRegex(string) {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function checkClaimHierarchy(issues) {
+      state.claims.forEach((claim, idx) => {
+        const claimNum = idx + 1;
+        if (claim.isDependent) {
+          if (!claim.dependsOn || claim.dependsOn >= claimNum) {
+            issues.push({
+              type: 'error',
+              msg: `<b>Dependency Issue (Claim ${claimNum}):</b> Improper parent claim reference. Dependent claims must refer strictly to a preceding claim.`
+            });
+          } else {
+            const parent = state.claims[claim.dependsOn - 1];
+            if (parent && parent.type !== claim.type) {
+              issues.push({
+                type: 'warning',
+                msg: `<b>Claim Type Conflict (Claim ${claimNum}):</b> Claim is of type <i>${claim.type.toUpperCase()}</i> but depends on Claim ${claim.dependsOn} which is of type <i>${parent.type.toUpperCase()}</i>.`
+              });
+            }
+          }
+        }
+      });
+    }
+
+    function checkNumeralsAndSpec(issues) {
+      const allSpecText = Array.from(document.querySelectorAll('.spec-edit-block')).map(el => el.innerText).join(' ');
+      
+      const allFigureText = [];
+      state.figures.forEach(fig => {
+        fig.shapes.filter(s => s.type === 'textbox').forEach(s => allFigureText.push(s.text));
+      });
+
+      state.elementsLedger.forEach(item => {
+        const numeralRegex = new RegExp(`\\b${item.numeral}\\b`);
+        
+        if (!numeralRegex.test(allSpecText)) {
+          issues.push({
+            type: 'warning',
+            msg: `<b>Specification Numeral Omission:</b> Element "${item.name}" (<b>${item.numeral}</b>) is defined in the Ledger but not cited in the Specification.`
+          });
+        }
+
+        const isPresentOnDrawings = allFigureText.some(txt => txt.includes(item.numeral));
+        if (!isPresentOnDrawings) {
+          issues.push({
+            type: 'warning',
+            msg: `<b>Drawing Numeral Omission:</b> Part Numeral <b>${item.numeral}</b> (${item.name}) is missing from all figure canvas sheets.`
+          });
+        }
+      });
+
+      const overflowingPages = document.querySelectorAll('.document-page.overflowing');
+      if (overflowingPages.length > 0) {
+        issues.push({
+          type: 'error',
+          msg: `<b>Specification Page Overflow:</b> ${overflowingPages.length} page(s) currently exceed the physical letter boundaries. Click "Auto-Balance Overflowing Pages" in the specification toolbar.`
+        });
+      }
+    }
+
+    /* =========================================================================
+       10. SAVE & LOAD
+       ========================================================================= */
+    function saveProject() {
+      const wasHighlighted = state.highlightActive;
+      if (wasHighlighted) clearClaimTermHighlights();
+
+      const pagesHtml = Array.from(document.querySelectorAll('.document-page')).map(p => p.querySelector('.page-body-content').innerHTML);
+
+      const projectPayload = {
+        pagesHtml: pagesHtml,
+        elementsLedger: state.elementsLedger,
+        claims: state.claims,
+        figures: state.figures
+      };
+      
+      const blob = new Blob([JSON.stringify(projectPayload, null, 2)], { type: "application/json" });
+      const dl = document.createElement('a');
+      dl.href = URL.createObjectURL(blob);
+      dl.download = `patent_draft_${Date.now()}.patent`;
+      dl.click();
+
+      if (wasHighlighted) applyClaimTermHighlights();
+    }
+
+    function loadProjectFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const data = JSON.parse(evt.target.result);
+          state.elementsLedger = data.elementsLedger || [];
+          state.claims = data.claims || [];
+          state.figures = data.figures || [];
+
+          if (data.pagesHtml && Array.isArray(data.pagesHtml)) {
+            const container = document.getElementById('pagesContainer');
+            container.innerHTML = '';
+            data.pagesHtml.forEach((html, i) => {
+              const wrapper = createPageElement();
+              wrapper.querySelector('.page-body-content').innerHTML = html;
+              container.appendChild(wrapper);
+            });
+            updatePageNumbers();
+            checkAllPagesForOverflow();
+          }
+
+          renderLedger();
+          renderClaims();
+          renderFigureTabs();
+          redrawCanvas();
+          alert("Patent draft loaded successfully.");
+        } catch (err) {
+          alert("Error loading patent draft file.");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    /* =========================================================================
+       11. PWA INSTALLATION PROMPT HANDLER
+       ========================================================================= */
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const installBtn = document.getElementById('installPwaBtn');
+      if (installBtn) installBtn.style.display = 'inline-flex';
+    });
+
+    function triggerPwaInstall() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('User accepted the PWA install prompt');
+        }
+        deferredPrompt = null;
+        document.getElementById('installPwaBtn').style.display = 'none';
+      });
+    }
+
+    window.addEventListener('appinstalled', () => {
+      console.log('Patent Drafting App was successfully installed');
+      const installBtn = document.getElementById('installPwaBtn');
+      if (installBtn) installBtn.style.display = 'none';
+    });
+
+    /* =========================================================================
+       12. ROBUST SERVICE WORKER REGISTRATION (OFFLINE & GITHUB PAGES SAFE)
+       ========================================================================= */
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        // Uses relative path registration so it works seamlessly under subdirectories
+        navigator.serviceWorker.register('./service-worker.js', { scope: './' })
+          .then((registration) => {
+            console.log('ServiceWorker registration successful with scope:', registration.scope);
+            
+            // Check for service worker updates
+            registration.onupdatefound = () => {
+              const installingWorker = registration.installing;
+              if (installingWorker) {
+                installingWorker.onstatechange = () => {
+                  if (installingWorker.state === 'installed') {
+                    if (navigator.serviceWorker.controller) {
+                      console.log('New content available; refresh to update.');
+                    } else {
+                      console.log('Content cached for offline use.');
+                    }
+                  }
+                };
+              }
+            };
+          })
+          .catch((error) => {
+            console.error('ServiceWorker registration failed:', error);
+          });
+      });
+    }
+
+    window.onload = function() {
+      updatePageNumbers();
+      renderLedger();
+      renderClaims();
+      renderFigureTabs();
+      redrawCanvas();
+      checkAllPagesForOverflow();
+    };
+  </script>
+</body>
+</html>
