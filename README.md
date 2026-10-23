@@ -52,7 +52,6 @@
 
 ## 📂 Repository Structure
 
-```text
 ├── index.html        # Core application: Multi-page editor, PowerPoint canvas, claims engine, and audit suite
 ├── manifest.json     # PWA manifest: Enables standalone app installation and vector branding
 ├── service-worker.js # Service worker: Cache-first engine enabling complete offline capability
@@ -65,7 +64,6 @@
 
 1.	Fork or Clone this repository:
 codeBash
-```text
 git clone https://github.com/<your-username>/<your-repository-name>.git
 
 2.	In your repository on GitHub:
@@ -76,7 +74,6 @@ o	Click Save.
 
 3.	Your drafting tool will be live in seconds at:
 codeText
-```text
 https://<your-username>.github.io/<your-repository-name>/
 
 ---
