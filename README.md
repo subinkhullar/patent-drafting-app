@@ -52,11 +52,11 @@
 
 ## 📂 Repository Structure
 
-- ** index.html:** Core application: Multi-page editor, PowerPoint canvas, claims engine, and audit suite
-- ** manifest.json:** PWA manifest: Enables standalone app installation and vector branding
-- ** service-worker.js:** Service worker: Cache-first engine enabling complete offline capability
-- ** README.md:** Comprehensive documentation and deployment guide
-- ** LICENSE:** MIT License
+- **index.html:** Core application: Multi-page editor, PowerPoint canvas, claims engine, and audit suite
+- **manifest.json:** PWA manifest: Enables standalone app installation and vector branding
+- **service-worker.js:** Service worker: Cache-first engine enabling complete offline capability
+- **README.md:** Comprehensive documentation and deployment guide
+- **LICENSE:** MIT License
 
 ---
 
@@ -67,10 +67,10 @@ codeBash
 git clone https://github.com/<your-username>/<your-repository-name>.git
 
 2.	In your repository on GitHub:
-o	Navigate to Settings > Pages.
-o	Under Build and deployment > Source, choose Deploy from a branch.
-o	Under Branch, select main (or master) and / (root).
-o	Click Save.
+o	**Navigate to Settings > Pages.**
+o	**Under Build and deployment > Source, choose Deploy from a branch.**
+o	**Under Branch, select main (or master) and / (root).**
+o	**Click Save.**
 
 3.	Your drafting tool will be live in seconds at:
 codeText
@@ -79,15 +79,15 @@ https://<your-username>.github.io/<your-repository-name>/
 ---
 
 ## 📖 How to Use
-1.	Set Up the Parts Ledger: Add primary components and numerals (e.g., controller 102, display 104) in the left sidebar.
-2.	Draft the Specification: Edit sections on the multi-page canvas, adjust typography, or click 📄 + Add Spec Page to add pages. Click 🟡 Toggle Term Highlighting to check your element distribution.
-3.	Build the Figures: Switch to the Figures & Drawing Studio (PPT) tab. Add tabs for FIG. 1, FIG. 2, etc. Draw block diagrams, flowchart decisions, and use the Patent Icons dropdown. Check that your drawings stay within the blue 37 CFR 1.84 margin guidelines.
-4.	Draft Claims: Add independent and dependent claims in the Claims tab.
-5.	Run Consistency Checks: Click ⚡ Run All Checks to identify missing antecedents, dependency logic issues, or omitted numerals.
-6.	Export Your Filing Package:
-o	Click 📥 Export Spec+Claims (.docx) for the complete written specification and claims.
-o	Click 📑 Export All Figures as PDF for the USPTO-compliant drawing sheets.
-o	Click 💾 Save Draft to keep a backup .patent state file.
+1.	**Set Up the Parts Ledger:** Add primary components and numerals (e.g., controller 102, display 104) in the left sidebar.
+2.	**Draft the Specification:** Edit sections on the multi-page canvas, adjust typography, or click 📄 + Add Spec Page to add pages. Click 🟡 Toggle Term Highlighting to check your element distribution.
+3.	**Build the Figures:** Switch to the Figures & Drawing Studio (PPT) tab. Add tabs for FIG. 1, FIG. 2, etc. Draw block diagrams, flowchart decisions, and use the Patent Icons dropdown. Check that your drawings stay within the blue 37 CFR 1.84 margin guidelines.
+4.	**Draft Claims:** Add independent and dependent claims in the Claims tab.
+5.	**Run Consistency Checks:** Click ⚡ Run All Checks to identify missing antecedents, dependency logic issues, or omitted numerals.
+6.	**Export Your Filing Package:**
+o	**Click 📥** Export Spec+Claims (.docx) for the complete written specification and claims.
+o	**Click 📑** Export All Figures as PDF for the USPTO-compliant drawing sheets.
+o	**Click 💾** Save Draft to keep a backup .patent state file.
 
 ---
 
