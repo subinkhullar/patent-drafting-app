@@ -52,11 +52,11 @@
 
 ## 📂 Repository Structure
 
-├── index.html        # Core application: Multi-page editor, PowerPoint canvas, claims engine, and audit suite
-├── manifest.json     # PWA manifest: Enables standalone app installation and vector branding
-├── service-worker.js # Service worker: Cache-first engine enabling complete offline capability
-├── README.md         # Comprehensive documentation and deployment guide
-└── LICENSE           # MIT License
+- ** index.html:** Core application: Multi-page editor, PowerPoint canvas, claims engine, and audit suite
+- ** manifest.json:** PWA manifest: Enables standalone app installation and vector branding
+- ** service-worker.js:** Service worker: Cache-first engine enabling complete offline capability
+- ** README.md:** Comprehensive documentation and deployment guide
+- ** LICENSE:** MIT License
 
 ---
 
