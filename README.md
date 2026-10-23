@@ -49,6 +49,8 @@ Try the live tool on GitHub Pages:
 ## 📂 Repository Structure
 
 ```text
-├── index.html       # Complete application (HTML5, styling, and JavaScript engine)
-├── README.md        # Documentation
-└── LICENSE          # MIT License
+├── index.html        # Core application shell: UI layout, Word/PPT engines, claims logic, and audit tools
+├── manifest.json     # PWA configuration: enables standalone desktop/mobile installation & app styling
+├── service-worker.js # Offline cache controller: stores application assets locally for zero-latency, offline use
+├── README.md         # Comprehensive project documentation, feature walkthroughs, and deployment steps
+└── LICENSE           # MIT open-source software license
