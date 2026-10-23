@@ -85,9 +85,9 @@ https://<your-username>.github.io/<your-repository-name>/
 4.	**Draft Claims:** Add independent and dependent claims in the Claims tab.
 5.	**Run Consistency Checks:** Click ⚡ Run All Checks to identify missing antecedents, dependency logic issues, or omitted numerals.
 6.	**Export Your Filing Package:**
-o	**Click 📥** Export Spec+Claims (.docx) for the complete written specification and claims.
-o	**Click 📑** Export All Figures as PDF for the USPTO-compliant drawing sheets.
-o	**Click 💾** Save Draft to keep a backup .patent state file.
+o	**Click 📥 Export Spec+Claims (.docx) for the complete written specification and claims.**
+o	**Click 📑 Export All Figures as PDF for the USPTO-compliant drawing sheets.**
+o	**Click 💾 Save Draft to keep a backup .patent state file.**
 
 ---
 
@@ -97,5 +97,4 @@ Distributed under the MIT License. See LICENSE for more information.
 ---
 
 ## 👤 Author
-Subin Khullar
-Patent Drafting App by Subin Khullar
+(c) 2026 Subin Khullar
