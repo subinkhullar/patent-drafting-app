@@ -67,10 +67,10 @@ codeBash
 git clone https://github.com/<your-username>/<your-repository-name>.git
 
 2.	In your repository on GitHub:
-o	**Navigate to Settings > Pages.**
-o	**Under Build and deployment > Source, choose Deploy from a branch.**
-o	**Under Branch, select main (or master) and / (root).**
-o	**Click Save.**
+-	**Navigate to Settings > Pages.**
+-	**Under Build and deployment > Source, choose Deploy from a branch.**
+-	**Under Branch, select main (or master) and / (root).**
+-	**Click Save.**
 
 3.	Your drafting tool will be live in seconds at:
 codeText
@@ -85,9 +85,9 @@ https://<your-username>.github.io/<your-repository-name>/
 4.	**Draft Claims:** Add independent and dependent claims in the Claims tab.
 5.	**Run Consistency Checks:** Click ⚡ Run All Checks to identify missing antecedents, dependency logic issues, or omitted numerals.
 6.	**Export Your Filing Package:**
-o	**Click 📥 Export Spec+Claims (.docx) for the complete written specification and claims.**
-o	**Click 📑 Export All Figures as PDF for the USPTO-compliant drawing sheets.**
-o	**Click 💾 Save Draft to keep a backup .patent state file.**
+-	**Click 📥 Export Spec+Claims (.docx) for the complete written specification and claims.**
+-	**Click 📑 Export All Figures as PDF for the USPTO-compliant drawing sheets.**
+-	**Click 💾 Save Draft to keep a backup .patent state file.**
 
 ---
 
